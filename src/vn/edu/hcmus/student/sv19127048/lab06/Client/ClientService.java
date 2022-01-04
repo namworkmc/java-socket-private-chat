@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
@@ -16,14 +15,17 @@ import java.util.Scanner;
 public class ClientService {
 
   private Socket socket;
-  private String privateIp;
-  private HashMap<String, ArrayList<String>> clients;
+  private HashMap<Integer, ArrayList<String>> messHistory;
 
-  public ClientService(String privateIp) {
+  private String sendTo;
+
+  public ClientService() {
     try {
       socket = new Socket("localhost", 9999);
-      this.privateIp = privateIp;
-      clients = new HashMap<>();
+
+      Scanner sc = new Scanner(System.in);
+      sendTo = sc.nextLine();
+      messHistory = new HashMap<>();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -32,30 +34,32 @@ public class ClientService {
   public void connect() {
     while (true) {
       getInputConnect();
-      getOutputConnect();
     }
   }
 
-  private void addMess(String ip, String mess) {
-    System.out.println(ip);
+  private void addMess(Integer privatePort, String mess) {
+    System.out.println(privatePort);
     System.out.println(mess);
-    if (clients.containsKey(ip)) {
-      clients.get(ip).add(mess);
+    if (messHistory.containsKey(privatePort)) {
+      messHistory.get(privatePort).add(mess);
     } else {
       ArrayList<String> messArrayList = new ArrayList<>(List.of(mess));
-      clients.put(ip, messArrayList);
+      messHistory.put(privatePort, messArrayList);
     }
   }
 
+  /**
+   *  Thread xử lý input từ client khác vào
+   */
   private void getInputConnect() {
     new Thread(() -> {
       try {
         Scanner in = new Scanner(socket.getInputStream());
 
         while (in.hasNextLine()) {
-          System.out.println(in.nextLine());
-          String[] data = in.nextLine().split(": ");
-          addMess(data[0], data[1]);
+          String line = in.nextLine();
+          String[] data = line.split(": ");
+          addMess(Integer.valueOf(data[0]), data[1]);
         }
       } catch (IOException e) {
         e.printStackTrace();
@@ -63,23 +67,30 @@ public class ClientService {
     }).start();
   }
 
-  private void getOutputConnect() {
-    new Thread(new Runnable() {
-      Scanner sc = new Scanner(System.in);
-      String msg = sc.nextLine();
+  /**
+   * Lấy lịch sử chat
+   * @return mảng {@link String}
+   */
+  public synchronized String[] getHistory() {
+    if (messHistory.isEmpty()) {
+      return new String[1];
+    }
+    return messHistory.get(socket.getLocalPort()).toArray(new String[1]);
+  }
 
-      @Override
-      public void run() {
-        try {
-          if (msg.equalsIgnoreCase("bye")) {
-            System.exit(1);
-          }
-          PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-          out.println(String.format("%s: %s", privateIp, msg));
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
+  // Thread xử lý output
+  public String[] sendMessage(String msg) {
+    new Thread(() -> {
+      try {
+        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+        // Gửi message kèm với client muốn gửi đến
+        addMess(socket.getLocalPort(), msg);
+        out.println(String.format("%s - %s: %s", socket.getLocalPort(), sendTo, msg));
+      } catch (IOException e) {
+        e.printStackTrace();
       }
     }).start();
+
+    return getHistory();
   }
 }

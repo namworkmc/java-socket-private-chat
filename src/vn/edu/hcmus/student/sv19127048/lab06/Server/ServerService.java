@@ -33,17 +33,31 @@ public class ServerService {
         sockets.add(soc);
         System.out.println("number of client is " + sockets.size());
 
+        sockets.forEach(e -> System.out.println(e.getPort()));
+
         new Thread(() -> {
           try {
             Scanner in = new Scanner(soc.getInputStream());
             while (in.hasNextLine()) {
               message = in.nextLine();
+
+              // Tách String từ client để lấy mess và port muốn gửi tới
+              String[] data = message.split(" - ");
+              String fromClient = data[0];
+              String temp = data[1];
+
+              data = temp.split(": ");
+              int toClient = Integer.parseInt(data[0]);
+              String mess = data[1];
+
               for (Socket s : sockets) {
                 if (s == null) {
                   sockets.remove(s);
-                } else if (!s.equals(soc)) {
+                } else if (s.getPort() == toClient) {
                   PrintWriter out = new PrintWriter(s.getOutputStream(), true);
-                  out.println(message);
+                  String str = String.format("%s: %s", fromClient, mess);
+                  System.out.println(str);
+                  out.println(str);
                 }
               }
             }
