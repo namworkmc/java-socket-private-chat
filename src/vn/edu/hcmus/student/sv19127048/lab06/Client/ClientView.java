@@ -4,6 +4,10 @@ import java.awt.EventQueue;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import javax.swing.AbstractListModel;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
@@ -21,12 +25,22 @@ public class ClientView extends JFrame {
   /**
    * Creates new form ChatGUI
    */
-  public ClientView() {
+  public ClientView(String username) {
+    this.onlineUserView = new OnlineUserView();
     initComponents();
-    clientController = new ClientController();
+    clientController = new ClientController(chatHistoryList, onlineUserView, username);
+    clientController.connect();
   }
 
   private void initComponents() {
+    JButton connectButton = onlineUserView.getConnectButton();
+    JList<String> onlineList = onlineUserView.getOnlineList();
+    connectButton.addActionListener(e -> {
+      String selectedValue = onlineList.getSelectedValue();
+      if (!selectedValue.isEmpty()) {
+        clientController.setSendTo(selectedValue);
+      }
+    });
 
     // Variables declaration - do not modify
     JPanel chatBoxPanel = new JPanel();
@@ -36,7 +50,15 @@ public class ClientView extends JFrame {
 
     chatHistoryList = new JList<>();
 
-    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+    addWindowListener(new WindowAdapter() {
+      @Override
+      public void windowClosing(WindowEvent e) {
+        clientController.disconnect();
+        System.exit(0);
+      }
+    });
+
     setPreferredSize(new Dimension(500, 500));
 
     inputTextField.setFont(new Font("Segoe UI", 0, 18)); // NOI18N
@@ -45,7 +67,8 @@ public class ClientView extends JFrame {
     submitBtn.setText("SEND");
     submitBtn.addActionListener(event -> {
       String msg = inputTextField.getText();
-      clientController.sendMessage(msg);
+      String[] chatHistory = clientController.sendMessage(msg);
+      renderList(chatHistory);
       inputTextField.setText("");
     });
 
@@ -115,7 +138,7 @@ public class ClientView extends JFrame {
   }
 
   // </editor-fold>
-  public static void main(String[] args) {
+  public void renderClientView() {
     try {
       for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
         if ("Nimbus".equals(info.getName())) {
@@ -129,12 +152,14 @@ public class ClientView extends JFrame {
     //</editor-fold>
 
     /* Create and display the form */
-    EventQueue.invokeLater(() -> new ClientView().setVisible(true));
+    EventQueue.invokeLater(() -> setVisible(true));
   }
 
   // Variables declaration - do not modify
   private JList<String> chatHistoryList;
+  private final OnlineUserView onlineUserView;
 
-  private ClientController clientController;
+
+  private final ClientController clientController;
   // End of variables declaration
 }

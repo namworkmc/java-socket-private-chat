@@ -1,22 +1,29 @@
 package vn.edu.hcmus.student.sv19127048.lab06.Client;
 
+import java.net.Socket;
+
 /**
  * vn.edu.hcmus.student.sv19127048.lab06.Client<br> Created by 19127048 - Nguyen Duc Nam<br> Date
  * 12/28/2021 - 5:57 PM<br> Description: JDK16<br>
  */
 
-public class Client {
+public class ClientAccount {
   private Integer privatePort;
   private String username;
   private String password;
+  private Socket socket;
 
-  public Client() {
+  public ClientAccount() {
   }
 
-  public Client(Integer privatePort, String username, String password) {
+  public ClientAccount(Socket socket) {
+    this.socket = socket;
+    this.privatePort = socket.getPort();
+  }
+
+  public ClientAccount(Integer privatePort, String username) {
     this.privatePort = privatePort;
     this.username = username;
-    this.password = password;
   }
 
   public Integer getPrivatePort() {
@@ -41,5 +48,9 @@ public class Client {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public Socket getSocket() {
+    return socket;
   }
 }
